@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="TouchAnything: Diffusion-Guided 3D Reconstruction from Sparse Robot Touches.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TouchAnything: Diffusion-Guided 3D Reconstruction from Sparse Robot Touches</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/favicon.ico">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.1.1/model-viewer.min.js"></script>
+</head>
+
+<body>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-2 publication-title">TouchAnything: Diffusion-Guided 3D Reconstruction from Sparse
+              Robot Touches</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="https://grange007.github.io/">Langzhe Gu</a><sup>1,3</sup>,</span>
+              <span class="author-block">
+                <a href="https://joehjhuang.github.io/">Hung-Jui Huang</a><sup>2*</sup>,</span>
+              <span class="author-block">
+                <a href="https://www.cs.cmu.edu/~mqadri/">Mohamad Qadri</a><sup>2*</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://www.cs.cmu.edu/~kaess/">Michael Kaess</a><sup>2</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://siebelschool.illinois.edu/about/people/all-faculty/yuanwz">Wenzhen Yuan</a><sup>3</sup>
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>1</sup>Tsinghua University,</span>
+              <span class="author-block"><sup>2</sup>Carnegie Mellon University,</span>
+              <span class="author-block"><sup>3</sup>University of Illinois Urbana-Champaign</span>
+              <br>
+              <span class="author-block is-size-6"><sup>*</sup>Equal contribution</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="./static/TouchAnything.pdf" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                    </span>
+                    <span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                    </span>
+                    <span>Video</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code</span>
+                  </a>
+                </span>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- <section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <video id="teaser" autoplay muted loop playsinline height="100%">
+        <source src="./static/videos/teaser_touch_anything.mp4"
+                type="video/mp4">
+      </video>
+      <h2 class="subtitle has-text-centered mt-4">
+        <strong>TouchAnything</strong> reconstructs highly detailed 3D object geometries from sparse physical touches by transferring visual generative priors from large-scale 2D diffusion models to the tactile domain.
+      </h2>
+    </div>
+  </div>
+</section> -->
+
+  <section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <img src="./static/images/teaser_new_new.jpg" alt="TouchAnything Teaser"
+          style="width: 100%; margin-top: 20px; margin-bottom: 20px;">
+        <h2 class="subtitle has-text-centered mt-4">
+          <strong>TouchAnything</strong> reconstructs highly detailed 3D object geometries from sparse physical touches
+          by transferring visual generative priors from large-scale 2D diffusion models to the tactile domain.
+        </h2>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Accurate object geometry estimation is essential for many downstream tasks, including robotic manipulation
+              and physical interaction. Although vision is the dominant modality for shape perception, it becomes
+              unreliable under occlusions or challenging lighting conditions. In such scenarios, tactile sensing
+              provides direct geometric information through physical contact.
+            </p>
+            <p>
+              However, reconstructing global 3D geometry from sparse local touches alone is fundamentally
+              underconstrained. We present <strong>TouchAnything</strong>, a framework that leverages a pretrained
+              large-scale 2D vision diffusion model as a semantic and geometric prior for 3D reconstruction from sparse
+              tactile measurements.
+            </p>
+            <p>
+              Unlike prior work that trains category-specific reconstruction networks or learns diffusion models
+              directly from tactile data, we transfer the geometric knowledge encoded in pretrained visual diffusion
+              models to the tactile domain. Given sparse contact constraints and a coarse class-level description of the
+              object, we formulate reconstruction as an optimization problem that enforces tactile consistency while
+              guiding solutions toward shapes consistent with the diffusion prior. Our method reconstructs accurate
+              geometries from only a few touches, outperforms existing baselines, and enables open-world 3D
+              reconstruction of previously unseen object instances.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Video</h2>
+          <div class="publication-video">
+            <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" frameborder="0" allow="autoplay; encrypted-media"
+              allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section is-light">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full-width">
+          <h2 class="title is-3">Methodology</h2>
+          <div class="content has-text-justified">
+            <p>
+              Our pipeline derives local geometry from Gelsight sensors and integrates it with a general-purpose 2D
+              Stable Diffusion prior. The reconstruction is performed in a coarse-to-fine manner.
+            </p>
+            <img src="./static/images/algorithm_figurenew.jpg" alt="TouchAnything Pipeline"
+              style="width: 100%; margin-top: 20px; margin-bottom: 20px;">
+            <ul>
+              <li><strong>Stage 1 (Coarse Geometry):</strong> We learn an SDF using a multi-resolution hash-grid and an
+                MLP, supervised by tactile-derived depth/normals and Score Distillation Sampling (SDS) from a diffusion
+                prior.</li>
+              <li><strong>Stage 2 (Fine Geometry):</strong> We transfer the geometry to an explicit DMTet (tetrahedral
+                grid) representation, enabling high-resolution (512x512) differentiable rendering. This allows the
+                diffusion model to sculpt high-frequency geometric details and textures.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      
+      <h2 class="title is-3 has-text-centered">Open-World Reconstruction from 20 Touches</h2>
+      <p class="has-text-centered mb-6">Interact with our reconstructed objects below. Drag to rotate, scroll to zoom.</p>
+
+      <div class="columns is-centered mb-6">
+        <div class="column is-full">
+          <div class="box" style="background-color: #ffffff;">
+            <h4 class="title is-5 has-text-centered">Potted Meat Can (prompt: "a can")</h4>
+            <div class="columns is-mobile">
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Real Object</p>
+                <img src="./static/images/potted_meat_can.jpg" alt="Real Potted Meat Can"
+                  style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; border-radius: 6px; padding: 10px;">
+              </div>
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Ground Truth</p>
+                <model-viewer src="./static/models/gt_spam_can.glb" auto-rotate camera-controls
+                  camera-orbit="auto 50deg auto" shadow-intensity="1.5"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Reconstruction</p>
+                <model-viewer src="./static/models/result_spam_can.glb" auto-rotate camera-controls
+                  camera-orbit="auto 50deg auto" shadow-intensity="1.5"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered mb-6">
+        <div class="column is-full">
+          <div class="box" style="background-color: #ffffff;">
+            <h4 class="title is-5 has-text-centered">Camera Model (prompt: "a camera")</h4>
+            <div class="columns is-mobile">
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Real Object</p>
+                <img src="./static/images/camera_model.jpg" alt="Real Camera Model"
+                  style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; border-radius: 6px; padding: 10px;">
+              </div>
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Ground Truth</p>
+                <model-viewer src="./static/models/gt_camera.glb" auto-rotate camera-controls
+                  camera-orbit="auto 70deg auto" shadow-intensity="1.5"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+              <div class="column is-one-third has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Reconstruction</p>
+                <model-viewer src="./static/models/result_camera.glb" auto-rotate camera-controls
+                  camera-orbit="auto 70deg auto" shadow-intensity="1.5"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered mb-6">
+        <div class="column is-full">
+          <div class="box" style="background-color: #ffffff;">
+            <h4 class="title is-5 has-text-centered">Power Drill (Prompt: "a drill")</h4>
+            <div class="columns is-mobile">
+              <div class="column is-half has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Real Object</p>
+                <img src="./static/images/real_drill.jpg" alt="Real Drill"
+                  style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; border-radius: 6px; padding: 10px;">
+              </div>
+              <div class="column is-half has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Reconstruction</p>
+                <model-viewer src="./static/models/result_drill2.glb" auto-rotate camera-controls 
+                  camera-orbit="-25deg 65deg auto" shadow-intensity="1.5"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered mb-6">
+        <div class="column is-full">
+          <div class="box" style="background-color: #ffffff;">
+            <h4 class="title is-5 has-text-centered">Avocado (Prompt: "an avodaco")</h4>
+            <div class="columns is-mobile">
+              <div class="column is-half has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Real Object</p>
+                <img src="./static/images/real_avocado.jpg" alt="Real Avocado"
+                  style="width: 100%; height: 300px; object-fit: contain; background-color: #ffffff; border-radius: 6px; padding: 10px;">
+              </div>
+              <div class="column is-half has-text-centered">
+                <p class="has-text-weight-semibold mb-2">Reconstruction</p>
+                <model-viewer src="./static/models/result_avocado.glb" auto-rotate camera-controls 
+                  camera-orbit="0deg 65deg 130%" shadow-intensity="1.5"
+                  max-camera-orbit="auto auto 300%"
+                  environment-image="./static/models/citrus_orchard_road_puresky_4k.hdr" exposure="0.7"
+                  style="width: 100%; height: 300px; background-color: #ffffff; border-radius: 6px;">
+                </model-viewer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered mt-6">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3 has-text-centered">Refining Fine Geometries</h2>
+          <div class="content has-text-justified">
+            <p>
+              Comparison between Stage 1 (Coarse SDF) and Stage 2 (DMTet Refinement). The explicit representation allows
+              the diffusion model to recover high-frequency surface details like the ridges on a lens hood or the
+              textured skin of an avocado.
+            </p>
+            <img src="./static/images/sup_stage_comparison_new.jpg" alt="Stage 1 vs Stage 2" style="width: 100%; border-radius: 6px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered mt-6">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3 has-text-centered">Ablation Studies</h2>
+          <div class="content has-text-justified">
+            <p>
+              Class-level prompts are often sufficient, while incorrect prompts can hallucinate semantically wrong
+              shapes. More touches generally improve reconstruction quality.
+            </p>
+            <img src="./static/images/ablationfullnew.jpg" alt="Ablation" style="width: 100%; border-radius: 6px;">
+          </div>
+        </div>
+      </div>
+
+    </div> </section>
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>@article{gu2026touch,
+  title={TouchAnything: Diffusion-Guided 3D Reconstruction from Sparse Robot Touches},
+  author={Gu, Langzhe and Huang, Hung-Jui and Qadri, Mohamad and Kaess, Michael and Yuan, Wenzhen},
+  journal={arXiv preprint},
+  year={2026}
+}</code></pre>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="content has-text-centered">
+        <a class="icon-link" href="#">
+          <i class="fas fa-file-pdf"></i>
+        </a>
+        <a class="icon-link" href="#" class="external-link" disabled>
+          <i class="fab fa-github"></i>
+        </a>
+      </div>
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This website is licensed under a <a rel="license"
+                href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+                Commons Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+            <p>
+              This means you are free to borrow the <a href="https://github.com/nerfies/nerfies.github.io">source
+                code</a> of this website,
+              we just ask that you link back to the original Nerfies page in the footer.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
