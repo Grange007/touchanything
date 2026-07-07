@@ -1,0 +1,11 @@
+name: ta
+channels:
+  - nvidia/label/cuda-11.8.0
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - cuda-toolkit=11.8
+  - pip:
+      - -r requirements.txt
