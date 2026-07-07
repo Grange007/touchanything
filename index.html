@@ -177,8 +177,11 @@
               Our pipeline derives local geometry from Gelsight sensors and integrates it with a general-purpose 2D
               Stable Diffusion prior. The reconstruction is performed in a coarse-to-fine manner.
             </p>
-            <img src="./static/images/algorithm_figurenew.jpg" alt="TouchAnything Pipeline"
-              style="width: 100%; margin-top: 20px; margin-bottom: 20px;">
+            <video autoplay muted loop playsinline controls preload="metadata"
+              aria-label="TouchAnything Pipeline"
+              style="width: 100%; margin-top: 20px; margin-bottom: 20px; border-radius: 6px;">
+              <source src="./static/videos/method_video.mp4" type="video/mp4">
+            </video>
             <ul>
               <li><strong>Stage 1 (Coarse Geometry):</strong> We learn an SDF using a multi-resolution hash-grid and an
                 MLP, supervised by tactile-derived depth/normals and Score Distillation Sampling (SDS) from a diffusion
