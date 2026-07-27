@@ -27,7 +27,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
         ambient_ratio_min: float = 0.5
         visualize_samples: bool = False
         latent_steps: int = 1000
-        nd_latent_steps: int = 1000
         texture: bool = True
         do_init: bool = False
         density_aware_guidance: bool = False
@@ -47,17 +46,12 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
     def configure(self) -> None:
         # set up geometry, material, background, renderer
         super().configure()
-        self.has_nd_guidance = (self.cfg.nd_guidance_type != "none") and hasattr(
-            self.cfg.loss, "lambda_nd"
-        )  # and (self.cfg.loss.lambda_nd > 0)
-        self.has_rgb_sd_guidanece = (self.cfg.guidance_type != "none") and hasattr(
+        self.has_rgb_sd_guidance = (self.cfg.guidance_type != "none") and hasattr(
             self.cfg.loss, "lambda_rgb_sd"
-        )  # and (self.cfg.loss.lambda_rgb_sd > 0)
-        threestudio.info(
-            f"================has_nd_guidance:{self.has_nd_guidance}, has_rgb_sd_guidanece:{self.has_rgb_sd_guidanece}================="
         )
+        threestudio.info(f"RGB Stable Diffusion guidance: {self.has_rgb_sd_guidance}")
 
-        if self.has_rgb_sd_guidanece:
+        if self.has_rgb_sd_guidance:
             self.guidance = threestudio.find(self.cfg.guidance_type)(self.cfg.guidance)
             # self.guidance.requires_grad_(False)
             self.prompt_processor = threestudio.find(self.cfg.prompt_processor_type)(
@@ -65,23 +59,11 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
             )
             self.prompt_utils = self.prompt_processor()
 
-        if self.has_nd_guidance:
-            self.nd_guidance = threestudio.find(self.cfg.nd_guidance_type)(
-                self.cfg.nd_guidance
-            )
-            self.nd_guidance.requires_grad_(False)
-            self.nd_prompt_processor = threestudio.find(
-                self.cfg.nd_prompt_processor_type
-            )(self.cfg.nd_prompt_processor)
-            self.nd_prompt_utils = self.nd_prompt_processor()
-
     def on_load_checkpoint(self, checkpoint):
         for k in list(checkpoint["state_dict"].keys()):
             if k.startswith("guidance."):
                 return
-            if k.startswith("nd_guidance."):
-                return
-        if self.has_rgb_sd_guidanece:
+        if self.has_rgb_sd_guidance:
             if hasattr(self.guidance, "state_dict"):
                 guidance_state_dict = {
                     "guidance." + k: v for (k, v) in self.guidance.state_dict().items()
@@ -91,29 +73,17 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                     **guidance_state_dict,
                 }
 
-        if self.has_nd_guidance:
-            guidance_nd_state_dict = {
-                "nd_guidance." + k: v
-                for (k, v) in self.nd_guidance.state_dict().items()
-            }
-            checkpoint["state_dict"] = {
-                **checkpoint["state_dict"],
-                **guidance_nd_state_dict,
-            }
-
         return
 
     def on_save_checkpoint(self, checkpoint):
         for k in list(checkpoint["state_dict"].keys()):
             if k.startswith("guidance."):
                 checkpoint["state_dict"].pop(k)
-            if k.startswith("nd_guidance."):
-                checkpoint["state_dict"].pop(k)
         return
 
     def forward(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         return self.renderer(
-            **batch, render_rgb=self.cfg.texture or self.has_rgb_sd_guidanece
+            **batch, render_rgb=self.cfg.texture or self.has_rgb_sd_guidance
         )
 
     def on_fit_start(self) -> None:
@@ -282,11 +252,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
         #     )
         if guidance == "guidance":
             batch = batch["random_camera"]
-            self.has_nd_guidance = (
-                (self.cfg.nd_guidance_type != "none")
-                and hasattr(self.cfg.loss, "lambda_nd")
-                and (self.C(self.cfg.loss.lambda_nd) > 0)
-            )
             self.has_rgb_sd_guidance = (
                 (self.cfg.guidance_type != "none")
                 and hasattr(self.cfg.loss, "lambda_rgb_sd")
@@ -420,41 +385,7 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
         elif guidance == "guidance":
             
             if not self.cfg.texture:  # geometry training
-                if self.has_nd_guidance:
-                    if self.true_global_step < self.cfg.nd_latent_steps:
-                        nd_guidance_inp = self.collect_inputs(
-                            out, self.cfg.nd_guidance.collect_inputs_lat
-                        )
-                        nd_guidance_inp = nd_guidance_inp * 2.0 - 1.0
-
-                        nd_guidance_out = self.nd_guidance(
-                            nd_guidance_inp,
-                            self.nd_prompt_utils,
-                            **batch,
-                            rgb_as_latents=True,
-                            guidance_eval=False,
-                            adjusted_guidance_scale=adjusted_guidance_scale,
-                        )
-                    else:
-                        nd_guidance_inp = self.collect_inputs(
-                            out, self.cfg.nd_guidance.collect_inputs
-                        )
-
-                        nd_guidance_out = self.nd_guidance(
-                            nd_guidance_inp,
-                            self.nd_prompt_utils,
-                            **batch,
-                            rgb_as_latents=False,
-                            guidance_eval=False,
-                            adjusted_guidance_scale=adjusted_guidance_scale,
-                        )
-
-                if self.has_rgb_sd_guidanece:
-                    timestep = (
-                        nd_guidance_out["timestep"]
-                        if self.cfg.guidance.share_t and self.has_nd_guidance
-                        else None
-                    )
+                if self.has_rgb_sd_guidance:
                     if self.true_global_step < self.cfg.latent_steps:
                         guidance_inp = self.collect_inputs(
                             out, self.cfg.guidance.collect_inputs_lat
@@ -467,7 +398,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                             **batch,
                             rgb_as_latents=True,
                             guidance_eval=guidance_eval,
-                            timestep=timestep,
                             adjusted_guidance_scale=adjusted_guidance_scale,
                         )
                     else:
@@ -487,7 +417,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                             **batch,
                             rgb_as_latents=False,
                             guidance_eval=guidance_eval,
-                            timestep=timestep,
                             adjusted_guidance_scale=adjusted_guidance_scale,
                         )
 
@@ -519,21 +448,7 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                             "laplacian_smoothness", loss_laplacian_smoothness
                         )
             else:  # texture training
-                if self.has_nd_guidance:
-                    nd_guidance_inp = self.collect_inputs(
-                        out, self.cfg.nd_guidance.collect_inputs
-                    )
-                    nd_guidance_out = self.nd_guidance(
-                        nd_guidance_inp, self.nd_prompt_utils, **batch, rgb_as_latents=False,
-                        adjusted_guidance_scale=adjusted_guidance_scale,
-                    )
-
-                if self.has_rgb_sd_guidanece:
-                    timestep = (
-                        nd_guidance_out["timestep"]
-                        if self.cfg.guidance.share_t and self.has_nd_guidance
-                        else None
-                    )
+                if self.has_rgb_sd_guidance:
                     guidance_inp = self.collect_inputs(
                         out, self.cfg.guidance.collect_inputs
                     )
@@ -542,7 +457,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                         self.prompt_utils,
                         **batch,
                         rgb_as_latents=False,
-                        timestep=timestep,
                         current_step_ratio=self.true_global_step / self.trainer.max_steps,
                         adjusted_guidance_scale=adjusted_guidance_scale,
                     )
@@ -637,7 +551,7 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
         if guidance == "guidance":
             # pdb.set_trace()
             loss_rgb_sd = 0
-            if self.has_rgb_sd_guidanece:
+            if self.has_rgb_sd_guidance:
                 for name, value in guidance_out.items():
                     if name != "timestep" and name != "eval":
                         self.log(f"train/rgb_{name}", value)
@@ -651,29 +565,11 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                         loss_rgb_sd += loss_weighted
                 loss += loss_rgb_sd  # * self.C(self.cfg.loss.lambda_rgb_sd)
 
-            loss_nd = 0
-            if self.has_nd_guidance:
-                for name, value in nd_guidance_out.items():
-                    if name != "timestep" and name != "eval":
-                        self.log(f"train/nd_{name}", value)
-                    if name.startswith("loss_"):
-                        if name == "loss_sds" and adjusted_lambda_sds is not None:
-                            value = value * adjusted_lambda_sds.mean()
-                        loss_nd += value * self.C(
-                            self.cfg.loss[name.replace("loss_", "lambda_nd_")]
-                        )
-                nd_weight = (
-                    self.C(self.cfg.loss.lambda_nd_w)
-                    if hasattr(self.cfg.loss, "lambda_nd_w")
-                    else 1.0
-                )
-                loss += loss_nd * nd_weight  # * self.C(self.cfg.loss.lambda_nd)
-
         for name, value in self.cfg.loss.items():
             self.log(f"train_params/{name}", self.C(value))
 
         if guidance_eval:
-            if self.has_rgb_sd_guidanece:
+            if self.has_rgb_sd_guidance:
                 self.guidance_evaluation_save(
                     out["comp_rgb"].detach()[: guidance_out["eval"]["bs"]],
                     guidance_out["eval"],

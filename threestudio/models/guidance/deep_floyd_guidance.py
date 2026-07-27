@@ -42,7 +42,6 @@ class DeepFloydGuidance(BaseObject):
 
         collect_inputs: Optional[list] = field(default_factory=lambda: ["comp_rgb"])
         collect_inputs_lat: Optional[list] = field(default_factory=lambda: [])
-        share_t: bool = False
 
     cfg: Config
 

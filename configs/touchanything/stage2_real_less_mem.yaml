@@ -47,7 +47,6 @@ data:
 system_type: "touchanything-reconstruction-system"
 system:
   latent_steps: 0
-  nd_latent_steps: ${trainer.max_steps}
   texture: false
   do_init: false
 
@@ -97,33 +96,11 @@ system:
     min_step_percent: 0.02
     max_step_percent: 0.5
     collect_inputs: ["comp_normal_cam_vis"]
-    share_t: false
 
   freq:
     n_ref: 2
     ref_only_steps: 0
     guidance_eval: 200
-
-  nd_prompt_processor_type: "stable-diffusion-prompt-processor"
-  nd_prompt_processor:
-    pretrained_model_name_or_path: "pretrained_models/AI-ModelScope/stable-diffusion-v1___5-no-safetensor"
-    prompt: ${system.prompt_processor.prompt}
-    negative_prompt: "ugly, bad anatomy, blurry, pixelated obscure, unnatural colors, poor lighting, dull, and unclear, cropped, lowres, low quality, artifacts, duplicate, morbid, mutilated, poorly drawn face, deformed, dehydrated, bad proportions"
-    front_threshold: 30.0
-    back_threshold: 30.0
-
-  nd_guidance_type: "none"
-  nd_guidance:
-    model_name: "nd-mv"
-    ckpt_path: "pretrained_models/Damo_XR_Lab/Normal-Depth-Diffusion-Model/nd_mv_ema.ckpt"
-    guidance_scale: 35.0
-    min_step_percent: 0.02
-    max_step_percent: 0.50
-    recon_loss: false
-    collect_inputs_lat: ["comp_normal_cam_vis", "disparity"]
-    collect_inputs: ["comp_normal_cam_vis", "disparity"]
-    cam_method: "rel_x2"
-    rotate_z: true
 
   loggers:
     wandb:
@@ -132,11 +109,8 @@ system:
       name: *tag
 
   loss:
-    lambda_nd: [0, 1, 1, 10000]
     lambda_rgb_sd: [0, 1, 1, 10000]
-    lambda_nd_w: [0, 1.0, 1.0, 10000]
     lambda_rgb_sds: 0.01
-    lambda_nd_sds: 0.01
     lambda_rgb: 0.0
     lambda_mask: 0.0
     depth_truncation: 0.1

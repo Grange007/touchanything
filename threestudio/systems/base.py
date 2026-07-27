@@ -227,17 +227,11 @@ class BaseLift3DSystem(BaseSystem):
         guidance_type: str = ""
         guidance: dict = field(default_factory=dict)
 
-        nd_guidance_type: str = ""
-        nd_guidance: dict = field(default_factory=dict)
-
         mv_guidance_type: str = ""
         mv_guidance: dict = field(default_factory=dict)
 
         prompt_processor_type: str = ""
         prompt_processor: dict = field(default_factory=dict)
-
-        nd_prompt_processor_type: str = ""
-        nd_prompt_processor: dict = field(default_factory=dict)
 
         mv_prompt_processor_type: str = ""
         mv_prompt_processor: dict = field(default_factory=dict)
@@ -403,78 +397,4 @@ class BaseLift3DSystem(BaseSystem):
             name="train_step",
             step=self.true_global_step,
             texts=guidance_eval_out["texts"],
-        )
-
-    def nd_guidance_evaluation_save(self, comp_rgb, nd_guidance_eval_out):
-        B, size = comp_rgb.shape[:2]
-        resize = lambda x: F.interpolate(
-            x.permute(0, 3, 1, 2), (size, size), mode="bilinear", align_corners=False
-        ).permute(0, 2, 3, 1)
-        filename = f"it{self.true_global_step}-train-nd.png"
-
-        def merge12(x):
-            return x.reshape(-1, *x.shape[2:])
-        
-        gen_img = nd_guidance_eval_out["gen_img"]
-        self.save_image(
-            f"it{self.true_global_step}-gen_img.png",
-            gen_img
-        )
-
-        self.save_image_grid(
-            filename,
-            [
-                {
-                    "type": "rgb",
-                    "img": merge12(comp_rgb),
-                    "kwargs": {"data_format": "HWC"},
-                },
-            ]
-            + (
-                [
-                    {
-                        "type": "rgb",
-                        "img": merge12(resize(nd_guidance_eval_out["imgs_normal_input"])),
-                        "kwargs": {"data_format": "HWC"},
-                    }
-                ]
-            )
-            + (
-                [
-                    {
-                        "type": "grayscale",
-                        "img": merge12(resize(nd_guidance_eval_out["imgs_disparity_input"])),
-                        "kwargs": {"cmap": "jet", "data_range": None},
-                    }
-                ]
-            )
-            + (
-                [
-                    {
-                        "type": "rgb",
-                        "img": merge12(resize(nd_guidance_eval_out["imgs_1step"][..., :3])),
-                        "kwargs": {"data_format": "HWC"},
-                    }
-                ]
-            )
-            + (
-                [
-                    {
-                        "type": "rgb",
-                        "img": merge12(resize(nd_guidance_eval_out["imgs_1orig"][..., :3])),
-                        "kwargs": {"data_format": "HWC"},
-                    }
-                ]
-            )
-            + (
-                [
-                    {
-                        "type": "rgb",
-                        "img": merge12(resize(nd_guidance_eval_out["imgs_final"][..., :3])),
-                        "kwargs": {"data_format": "HWC"},
-                    }
-                ]
-            ),
-            name="train_step",
-            step=self.true_global_step,
         )

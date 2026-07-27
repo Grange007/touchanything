@@ -2,7 +2,7 @@ TouchAnything
 
 This project includes and adapts code from open-source 3D generation and
 diffusion projects. We thank the RichDreamer, threestudio,
-normal-depth-diffusion, Stable Diffusion, and related communities.
+Stable Diffusion, and related communities.
 
 See LICENSE files in this repository and third-party package licenses for
 their respective terms.

@@ -1,12 +1,5 @@
 from modelscope import snapshot_download
 
-# runwayml/stable-diffusion-v1-5
-# models--runwayml--stable-diffusion-v1-5
-model_id = snapshot_download(
-    "AI-ModelScope/stable-diffusion-v1.5-no-safetensor", cache_dir="./pretrained_models"
-)
-print(model_id)
-
 # openai/clip-vit-large-patch14
 # models--openai--clip-vit-large-patch14
 model_id = snapshot_download(

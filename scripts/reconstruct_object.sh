@@ -191,7 +191,6 @@ STAGE1_ARGS=(
     data.root_dir="$DATA_ROOT"
     data.json_path="$JSON_FILE"
     system.prompt_processor.prompt="$PROMPT_HYDRA"
-    system.nd_prompt_processor.prompt="$PROMPT_HYDRA"
     system.loggers.wandb.enable="$USE_WANDB"
     system.loggers.wandb.project="touchanything"
 )
@@ -216,7 +215,6 @@ run_step "[2/4] Stage 1 mesh export" \
     --export \
     resume="$STAGE1_CKPT_PATH" \
     system.guidance_type=none \
-    system.nd_guidance_type=none \
     system.exporter_type=mesh-exporter \
     system.geometry.isosurface_resolution="$MESH_RESOLUTION" \
     system.exporter.context_type=cuda \
@@ -235,7 +233,6 @@ STAGE2_ARGS=(
     data.root_dir="$DATA_ROOT_STAGE2"
     data.json_path="$JSON_FILE_STAGE2"
     system.prompt_processor.prompt="$PROMPT_HYDRA"
-    system.nd_prompt_processor.prompt="$PROMPT_HYDRA"
     system.geometry_convert_from="$STAGE1_CKPT_PATH"
     system.loggers.wandb.enable="$USE_WANDB"
     system.loggers.wandb.project="touchanything"
@@ -264,7 +261,6 @@ run_step "[4/4] Stage 2 mesh export" \
     --export \
     resume="$STAGE2_CKPT_PATH" \
     system.guidance_type=none \
-    system.nd_guidance_type=none \
     system.exporter_type=mesh-exporter \
     system.geometry.isosurface_resolution="$MESH_RESOLUTION" \
     system.exporter.context_type=cuda \

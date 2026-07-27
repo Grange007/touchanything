@@ -68,22 +68,18 @@ export CUDA_HOME="$CONDA_PREFIX"
 export CC=/usr/bin/gcc-11
 export CXX=/usr/bin/g++-11
 export CUDAHOSTCXX=/usr/bin/g++-11
-export TORCH_CUDA_ARCH_LIST=8.9
 
 python -m pip install --no-build-isolation -r requirements.txt
 ```
 
 PyTorch must be installed first because `tinycudann`, `nvdiffrast`, and
-`nerfacc` compile against the installed PyTorch and CUDA. Compute capability
-`8.9` is for the RTX 4090; change `TORCH_CUDA_ARCH_LIST` for other GPU
-architectures.
+`nerfacc` compile against the installed PyTorch and CUDA. Choose the correct gcc/g++ version for your cuda version.
 
 ## Model Weights
 
 Download the diffusion and CLIP checkpoints through ModelScope:
 
 ```bash
-python tools/download_nd_models.py
 python tools/download_sd_models.py
 ```
 
@@ -94,16 +90,13 @@ including:
 pretrained_models/
   AI-ModelScope/
     stable-diffusion-2-1-base/
-    stable-diffusion-v1___5-no-safetensor/
     clip-vit-large-patch14/
     CLIP-ViT-H-14-laion2B-s32B-b79K/
-  Damo_XR_Lab/
-    Normal-Depth-Diffusion-Model/
 ```
 
 ## Quick Start
 
-Run the bundled 20-touch camera example:
+Run the bundled 20-touch camera example (tested on A40 and A100 ):
 
 ```bash
 bash scripts/reconstruct_object.sh \
@@ -112,10 +105,14 @@ bash scripts/reconstruct_object.sh \
   --prompt "a camera"
 ```
 
-Inspect the four generated commands without starting training:
+If you are using a GPU with less memory (like an RTX 4090), you may use `stage2_real_less_mem.yaml` for Stage 2 refinement, which uses a smaller batch size and lower resolution.
 
 ```bash
-bash scripts/reconstruct_object.sh --dry-run
+bash scripts/reconstruct_object.sh \
+  --data-root examples/data/record_printed_camera_sample20 \
+  --json sample_20_noaxis_8.json \
+  --prompt "a camera" \
+  --config-stage2 configs/touchanything/stage2_real_less_mem.yaml
 ```
 
 The pipeline trains and exports the Stage 1 geometry, then refines and exports
@@ -187,9 +184,15 @@ the complete layout.
 
 ## Acknowledgements
 
-This implementation builds on threestudio, RichDreamer, Normal-Depth
-Diffusion, Stable Diffusion, and other open-source projects listed in the
-repository dependencies.
+This work is built on many amazing research works and open-source projects:
+
+- [threestudio](https://github.com/threestudio-project/threestudio)
+- [RichDreamer](https://github.com/modelscope/richdreamer)
+- [Fantasia3D](https://github.com/Gorilla-Lab-SCUT/Fantasia3D)
+- [gs_sdk](https://github.com/joehjhuang/gs_sdk)
+- [Taxim](https://github.com/Robo-Touch/Taxim)
+
+Thanks for their excellent work!
 
 ## License
 

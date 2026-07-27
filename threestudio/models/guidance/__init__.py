@@ -9,8 +9,6 @@ _OPTIONAL_GUIDANCE_MODULES = (
     "stable_diffusion_vsd_guidance",
     "threefuse_vsd_guidance",
     "threefuse_sd_guidance",
-    "nd_dmtet_multiview_diffusion_guidance",
-    "nd_multiview_diffusion_guidance",
 )
 
 

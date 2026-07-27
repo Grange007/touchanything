@@ -52,7 +52,6 @@ class StableDiffusionGuidance(BaseObject):
 
         collect_inputs: Optional[list] = field(default_factory=lambda: ["comp_rgb"])
         collect_inputs_lat: Optional[list] = field(default_factory=lambda: [])
-        share_t: bool = False
         guidance_eval_return_noise: bool = False
 
     cfg: Config
@@ -469,7 +468,6 @@ class StableDiffusionGuidance(BaseObject):
         camera_distances: Float[Tensor, "B"],
         rgb_as_latents=False,
         guidance_eval=False,
-        timestep=None,
         current_step_ratio=0,
         adjusted_guidance_scale=None,
         **kwargs,
@@ -489,21 +487,14 @@ class StableDiffusionGuidance(BaseObject):
             # encode image into latents with vae
             latents = self.encode_images(rgb_BCHW_512)
 
-        if timestep is not None:
-            # # sample timestep
-            # t = torch.randint(self.min_step, self.max_step + 1, [1], dtype=torch.long, device=latents.device)
-            # t = t.repeat(batch_size)
-            t = timestep[:batch_size]
-            assert batch_size * 2 == timestep.shape[0]
-        else:
-            # timestep ~ U(0.02, 0.98) to avoid very high/low noise level
-            t = torch.randint(
-                self.min_step,
-                self.max_step + 1,
-                [batch_size],
-                dtype=torch.long,
-                device=self.device,
-            )
+        # timestep ~ U(0.02, 0.98) to avoid very high/low noise level
+        t = torch.randint(
+            self.min_step,
+            self.max_step + 1,
+            [batch_size],
+            dtype=torch.long,
+            device=self.device,
+        )
 
         if self.cfg.use_sjc:
             grad, guidance_eval_utils = self.compute_grad_sjc(
