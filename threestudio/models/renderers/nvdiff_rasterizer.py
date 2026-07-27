@@ -172,10 +172,7 @@ class NVDiffRasterizer(Rasterizer):
 
         # print(near[0], far[0], near_disparity[0], far_disparity[0], disparity.min(), disparity.max())
         disparity = (disparity - far_disparity) / (near_disparity - far_disparity)
-        # print(disparity.min(), disparity.max())
-
         disparity = torch.clamp(disparity, 0, 1)
-        print(disparity.min(), disparity.max())
 
         return disparity
 
@@ -383,8 +380,6 @@ class NVDiffRasterizer(Rasterizer):
             else:
                 mat_all["rgb"] = rgb_fg
                 
-            print(f"mat_all keys: {mat_all.keys()}")
-
             for k, v in mat_all.items():
                 gb_fg = torch.zeros(batch_size, height, width, 3).to(v)
                 gb_fg[selector] = v

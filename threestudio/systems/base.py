@@ -406,10 +406,7 @@ class BaseLift3DSystem(BaseSystem):
         )
 
     def nd_guidance_evaluation_save(self, comp_rgb, nd_guidance_eval_out):
-        print("comp_rgb", comp_rgb.shape)
-        
         B, size = comp_rgb.shape[:2]
-        print("size", size)
         resize = lambda x: F.interpolate(
             x.permute(0, 3, 1, 2), (size, size), mode="bilinear", align_corners=False
         ).permute(0, 2, 3, 1)
@@ -419,7 +416,6 @@ class BaseLift3DSystem(BaseSystem):
             return x.reshape(-1, *x.shape[2:])
         
         gen_img = nd_guidance_eval_out["gen_img"]
-        print("gen_img", gen_img.shape, gen_img.min(), gen_img.max())
         self.save_image(
             f"it{self.true_global_step}-gen_img.png",
             gen_img

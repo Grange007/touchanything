@@ -293,8 +293,6 @@ class PromptProcessor(BaseObject):
 
         self.direction2idx = {d.name: i for i, d in enumerate(self.directions)}
 
-        with open(os.path.join("load/prompt_library.json"), "r") as f:
-            self.prompt_library = json.load(f)
         # use provided prompt or find prompt in library
         self.prompt = self.preprocess_prompt(self.cfg.prompt)
         # use provided negative prompt
@@ -420,16 +418,25 @@ class PromptProcessor(BaseObject):
 
     def preprocess_prompt(self, prompt: str) -> str:
         if prompt.startswith("lib:"):
+            library_path = os.path.join("load", "prompt_library.json")
+            try:
+                with open(library_path, "r") as f:
+                    prompt_library = json.load(f)
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"Prompt library syntax requires {library_path}, but the file does not exist."
+                ) from exc
+
             # find matches in the library
             candidate = None
             keywords = prompt[4:].lower().split("_")
-            for prompt in self.prompt_library["dreamfusion"]:
-                if all([k in prompt.lower() for k in keywords]):
+            for library_prompt in prompt_library["dreamfusion"]:
+                if all([k in library_prompt.lower() for k in keywords]):
                     if candidate is not None:
                         raise ValueError(
                             f"Multiple prompts matched with keywords {keywords} in library"
                         )
-                    candidate = prompt
+                    candidate = library_prompt
             if candidate is None:
                 raise ValueError(
                     f"Cannot find prompt with keywords {keywords} in library"

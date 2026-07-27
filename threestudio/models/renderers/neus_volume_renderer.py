@@ -427,14 +427,6 @@ class NeuSVolumeRenderer(VolumeRenderer):
         depth = out["depth"] * out["opacity"] + (1 - out["opacity"]) * depth_bg_max
         # depth = out["depth"]
 
-        print(
-            kwargs["camera_distances"].detach().cpu().numpy().min(),
-            kwargs["camera_distances"].detach().cpu().numpy().max(),
-            out["depth"].detach().cpu().numpy().min(),
-            out["depth"].detach().cpu().numpy().max(),
-            depth.detach().cpu().numpy().min(),
-            depth.detach().cpu().numpy().max(),
-        )
         disparity = self.depth_normalization(
             depth,
             valid_mask=(out["depth"] > 0),

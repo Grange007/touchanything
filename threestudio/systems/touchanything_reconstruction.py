@@ -292,9 +292,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                 and hasattr(self.cfg.loss, "lambda_rgb_sd")
                 and (self.C(self.cfg.loss.lambda_rgb_sd) > 0)
             )
-            print(
-                f"has_nd_guidance:{self.has_nd_guidance}, has_rgb_sd_guidance:{self.has_rgb_sd_guidance}"
-            )
 
         batch["bg_color"] = None
         # batch["ambient_ratio"] = ambient_ratio
@@ -342,7 +339,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
             gt_mask = batch["mask"]
             # gt_mask = gt_mask.permute(0, 2, 1)  # [B, H, W, C] -> [B, C, H, W]
             # set_loss("rgb", F.mse_loss(gt_rgb, out["comp_rgb"]))
-            print(f"gt_depth shape: {batch['ref_depth'].shape}, out depth shape: {out['depth'].shape}, gt_mask shape: {gt_mask.shape}")
             # mask loss
             # set_loss("mask", F.mse_loss(gt_mask.float(), out["opacity"]))
 
@@ -352,7 +348,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                 if mask_bool.sum() > 0:
                     gt_depth = batch["ref_depth"][mask_bool]
                     pred_depth = out["depth"][mask_bool]
-                    print(f"masked gt_depth shape: {gt_depth.shape}, masked pred_depth shape: {pred_depth.shape}")
                     set_loss("depth", F.l1_loss(gt_depth, pred_depth))
                 else:
                     set_loss("depth", torch.tensor(0.0, device=out["depth"].device, requires_grad=True))
@@ -386,12 +381,9 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                 # sdf_weight = 1.0 - num_sdf_samples / num_samples
                 fs_weight = 1.0
                 sdf_weight = 1.0
-                print(f"fs_weight: {fs_weight}, sdf_weight: {sdf_weight}")
                 
                 if self.C(self.cfg.loss.lambda_freespace) > 0:
                     if front_mask.sum() > 0:
-                        freespace_shape = F.relu(depth_truncation - pred_sdf)[front_mask].shape
-                        print(f"freespace shape: {freespace_shape}")
                         free_space_loss = torch.mean((F.relu(depth_truncation - pred_sdf)[front_mask]) ** 2) * fs_weight
                         set_loss("freespace", free_space_loss)
                     else:
@@ -399,7 +391,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
 
                 if self.C(self.cfg.loss.lambda_sdf) > 0:
                     if sdf_mask.sum() > 0:
-                        print(f"sdf shape: {((z_vals + pred_sdf) - depth_gt_expanded)[sdf_mask].shape}")
                         sdf_loss = torch.mean(((z_vals + pred_sdf) - depth_gt_expanded)[sdf_mask] ** 2) * sdf_weight
                         set_loss("sdf", sdf_loss)
                     else:
@@ -422,7 +413,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                     # Index to get valid [M, 3] tensors directly
                     valid_gt_normal = batch["origin_normal"][mask_bool_normal]
                     valid_pred_normal = out["comp_normal_cam"][mask_bool_normal] * 2.0 - 1.0
-                    print(f"masked gt_normal shape: {valid_gt_normal.shape}, masked pred_normal shape: {valid_pred_normal.shape}")
                     set_loss("normal", F.l1_loss(valid_pred_normal, valid_gt_normal))
                 else:
                     set_loss("normal", torch.tensor(0.0, device=out["comp_normal_cam"].device, requires_grad=True))
@@ -644,7 +634,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                 self.log(f"train/{name}_w", loss_weighted)
                 loss += loss_weighted
         
-        print(f"Initial loss: {loss}")
         if guidance == "guidance":
             # pdb.set_trace()
             loss_rgb_sd = 0
@@ -680,15 +669,10 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
                 )
                 loss += loss_nd * nd_weight  # * self.C(self.cfg.loss.lambda_nd)
 
-            print(f"loss_rgb_sd:{loss_rgb_sd}, loss_nd:{loss_nd}")
-
-
-
         for name, value in self.cfg.loss.items():
             self.log(f"train_params/{name}", self.C(value))
 
         if guidance_eval:
-            print(f"out_keys: {out.keys()}")
             if self.has_rgb_sd_guidanece:
                 self.guidance_evaluation_save(
                     out["comp_rgb"].detach()[: guidance_out["eval"]["bs"]],
@@ -793,7 +777,6 @@ class TouchAnythingReconstructionSystem(BaseLift3DSystem):
 
     def validation_step(self, batch, batch_idx):
         out = self(batch)
-        print(f"out keys: {out.keys()}")
         # 绘制三个normal通道分布的直方图对比
         # if "comp_normal" in out and "comp_normal_cam" in out and "ref_normal" in batch and "origin_normal" in batch:
         #     # 获取数据并转换为numpy数组

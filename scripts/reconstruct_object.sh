@@ -14,11 +14,17 @@ CONFIG_STAGE1="configs/touchanything/stage1_real.yaml"
 CONFIG_STAGE2="configs/touchanything/stage2_real.yaml"
 OUTPUT_DIR="outputs/touchanything"
 MESH_RESOLUTION=256
-USE_WANDB=false
+USE_WANDB=true
 MAX_STEPS=""
 CONVERT_MESH_SCALE=""
 ELEVATION_RANGE=""
 DRY_RUN=false
+
+if [[ -n "${PYTHONWARNINGS:-}" ]]; then
+    export PYTHONWARNINGS="${PYTHONWARNINGS},ignore::FutureWarning,ignore:pkg_resources is deprecated as an API:UserWarning"
+else
+    export PYTHONWARNINGS="ignore::FutureWarning,ignore:pkg_resources is deprecated as an API:UserWarning"
+fi
 
 show_help() {
     cat <<'EOF'
@@ -102,13 +108,18 @@ abspath_under_root() {
     fi
 }
 
-run_cmd() {
-    printf '+'
-    printf ' %q' "$@"
-    printf '\n'
-    if [[ "$DRY_RUN" == false ]]; then
-        "$@"
+run_step() {
+    local label="$1"
+    shift
+
+    printf '\n==> %s\n' "$label"
+    if [[ "$DRY_RUN" == true ]]; then
+        printf '+'
+        printf ' %q' "$@"
+        printf '\n'
+        return
     fi
+    "$@"
 }
 
 CONFIG_STAGE1="$(abspath_under_root "$CONFIG_STAGE1")"
@@ -164,6 +175,11 @@ if [[ "$DRY_RUN" == false ]]; then
 fi
 cd "$PROJECT_ROOT"
 
+printf 'TouchAnything reconstruction\n'
+printf '  data:   %s/%s\n' "$DATA_ROOT" "$JSON_FILE"
+printf '  prompt: %s\n' "$PROMPT"
+printf '  output: %s/%s\n' "$OUTPUT_DIR" "$EXPERIMENT_NAME"
+
 STAGE1_ARGS=(
     python3 launch.py
     --config "$CONFIG_STAGE1"
@@ -187,18 +203,20 @@ if [[ -n "$ELEVATION_RANGE" ]]; then
     STAGE1_ARGS+=("data.random_camera.elevation_range=$ELEVATION_RANGE")
 fi
 
-run_cmd "${STAGE1_ARGS[@]}"
+run_step "[1/4] Stage 1 training" "${STAGE1_ARGS[@]}"
 
 if [[ "$DRY_RUN" == false && ! -f "$STAGE1_CKPT_PATH" ]]; then
     echo "Stage-1 checkpoint was not created: $STAGE1_CKPT_PATH" >&2
     exit 1
 fi
 
-run_cmd \
+run_step "[2/4] Stage 1 mesh export" \
     python3 launch.py \
     --config "$STAGE1_PARSED_CONFIG" \
     --export \
     resume="$STAGE1_CKPT_PATH" \
+    system.guidance_type=none \
+    system.nd_guidance_type=none \
     system.exporter_type=mesh-exporter \
     system.geometry.isosurface_resolution="$MESH_RESOLUTION" \
     system.exporter.context_type=cuda \
@@ -233,18 +251,20 @@ if [[ -n "$ELEVATION_RANGE" ]]; then
     STAGE2_ARGS+=("data.random_camera.elevation_range=$ELEVATION_RANGE")
 fi
 
-run_cmd "${STAGE2_ARGS[@]}"
+run_step "[3/4] Stage 2 training" "${STAGE2_ARGS[@]}"
 
 if [[ "$DRY_RUN" == false && ! -f "$STAGE2_CKPT_PATH" ]]; then
     echo "Stage-2 checkpoint was not created: $STAGE2_CKPT_PATH" >&2
     exit 1
 fi
 
-run_cmd \
+run_step "[4/4] Stage 2 mesh export" \
     python3 launch.py \
     --config "$STAGE2_PARSED_CONFIG" \
     --export \
     resume="$STAGE2_CKPT_PATH" \
+    system.guidance_type=none \
+    system.nd_guidance_type=none \
     system.exporter_type=mesh-exporter \
     system.geometry.isosurface_resolution="$MESH_RESOLUTION" \
     system.exporter.context_type=cuda \
@@ -252,4 +272,4 @@ run_cmd \
     name="$EXPERIMENT_NAME" \
     tag="$TAG_STAGE2_EXPORT"
 
-echo "Done. Outputs: $OUTPUT_DIR/$EXPERIMENT_NAME"
+printf '\nDone. Outputs: %s/%s\n' "$OUTPUT_DIR" "$EXPERIMENT_NAME"
