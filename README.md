@@ -1,11 +1,12 @@
 # TouchAnything: Diffusion-Guided 3D Reconstruction from Sparse Robot Touches
 
-**Accepted to [ECCV 2026](https://eccv.ecva.net/Conferences/2026).**
+**Accepted by ECCV 2026.**
 
-[Project Page](https://grange007.github.io/touchanything/) |
-[Paper](https://arxiv.org/abs/2604.08945)
+[Project Page](https://grange007.github.io/touchanything/) | [Paper](https://arxiv.org/abs/2604.08945)
 
-Langzhe Gu, Hung-Jui Huang, Mohamad Qadri, Michael Kaess, and Wenzhen Yuan
+Langzhe Gu, Hung-Jui Huang\*, Mohamad Qadri\*, Michael Kaess, Wenzhen Yuan
+
+\* Equal contribution.
 
 ## Overview
 
@@ -28,6 +29,17 @@ The reconstruction follows a coarse-to-fine pipeline:
 This repository includes the two-stage reconstruction pipeline, dataset batch
 runner, default configs, and a 20-touch camera example under
 `examples/data/record_printed_camera_sample20`.
+
+## Open-Source Roadmap
+
+We plan to release the following components of TouchAnything:
+
+- [x] Reconstruction code
+- [ ] Real-world tactile dataset
+- [ ] Simulation data processing pipeline
+
+The reconstruction code is currently available. The real-world dataset and
+simulation data processing pipeline will be released in future updates.
 
 ## Installation
 
@@ -92,6 +104,19 @@ pretrained_models/
     stable-diffusion-2-1-base/
     clip-vit-large-patch14/
     CLIP-ViT-H-14-laion2B-s32B-b79K/
+```
+
+### Tetrahedral Grid
+
+Stage 2 uses a 256-resolution DMTet grid. The file is too large to include in
+the Git repository and must be downloaded separately:
+
+[Download `256_tets.npz` from Google Drive](https://drive.google.com/drive/folders/1071sh1FjmuSWzV8nXOhPuUJAi7pl5MNm)
+
+Place the downloaded file at:
+
+```text
+load/tets/256_tets.npz
 ```
 
 ## Quick Start
