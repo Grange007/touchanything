@@ -37,10 +37,11 @@ We plan to release the following components of TouchAnything:
 - [x] Reconstruction code
 - [x] Real-world tactile dataset
 - [x] Simulation tactile dataset
-- [ ] Simulation data processing pipeline
+- [x] Simulation data processing pipeline
 
-The reconstruction code and both datasets are available. The simulation data
-processing pipeline will be released in a future update.
+The reconstruction code and both datasets are available. Simulation data
+generation and processing are released separately in
+[touchanything_simulation](https://github.com/Grange007/touchanything_simulation).
 
 ## Installation
 
@@ -159,6 +160,35 @@ and [Simulation dataset](https://huggingface.co/Grange007/touchanything_simulati
 Download and extract the archives, preserving the original directory structure.
 These uploads currently use Hugging Face model repositories, rather than the
 `datasets` library format.
+
+### Generate your own simulation records
+
+The [simulation repository](https://github.com/Grange007/touchanything_simulation)
+contains mesh preprocessing, Taxim tactile simulation, local geometry model
+training/inference, and TouchAnything data export. Follow its installation and
+geometry checkpoint download instructions in its own environment, then run:
+
+```bash
+# In the touchanything_simulation repository:
+bash run_pipeline.sh /path/to/camera.ply
+```
+
+This produces `outputs/touchanything/camera/`, including `meta_data.json`,
+touch-count subsets such as `camera_20.json` (when enough valid contacts exist),
+RGB/mask images, and depth/normal arrays. Switch back to this reconstruction
+repository and activate its environment before running:
+
+```bash
+bash scripts/train_simulation_dataset.sh \
+  /path/to/touchanything_simulation/outputs/touchanything \
+  --default-prompt "a camera" --touches 20
+```
+
+For differently named objects, supply the appropriate prompt or a prompt map.
+The simulation pipeline uses preprocessing scale `0.2` and export scale `9`
+by default; see the simulation scale convention in the EMD section below.
+The current exporter writes 3x3 intrinsics, while the released dataset uses
+4x4 intrinsics; the reconstruction dataloader supports both representations.
 
 ### Download and test one object from each dataset
 
