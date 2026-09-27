@@ -21,6 +21,7 @@ git+https://github.com/NVlabs/nvdiffrast.git
 libigl==2.4.1
 xatlas
 trimesh[easy]
+scipy
 networkx
 PyMCubes
 wandb

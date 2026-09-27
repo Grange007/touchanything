@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -29,6 +30,43 @@ def infer_prompt(record_name: str) -> str:
     return "a " + (" ".join(tokens) if tokens else "object")
 
 
+def select_metadata(record: Path, touches: str, filename: str | None) -> Path | None:
+    if filename:
+        path = record / filename
+        return path if path.is_file() else None
+    candidates = []
+    for path in sorted(record.glob("*.json")):
+        with path.open(encoding="utf-8") as source:
+            metadata = json.load(source)
+        if not isinstance(metadata, dict) or not isinstance(metadata.get("frames"), list):
+            continue
+        if touches == "all":
+            if not path.stem.startswith("meta"):
+                continue
+        elif len(metadata["frames"]) != int(touches):
+            continue
+        candidates.append(path)
+    # Prefer the processed coordinate convention used by the real-world demo.
+    for name in (f"sample_{touches}_noaxis_8.json", "meta_data_noaxis_8.json" if touches == "all" else f"sample_{touches}.json"):
+        preferred = record / name
+        if preferred in candidates:
+            return preferred
+    if len(candidates) > 1:
+        raise ValueError(f"Ambiguous metadata in {record}: {[p.name for p in candidates]}. Specify --json.")
+    return candidates[0] if candidates else None
+
+
+def record_prompt(record: Path, dataset_root: Path) -> str:
+    for path in (record, *record.parents):
+        if path.name.startswith("record_"):
+            return infer_prompt(path.name)
+        if re.fullmatch(r"[0-9a-f]{32}", path.name):
+            return "a " + path.parent.name.replace("_", " ")
+        if path == dataset_root:
+            break
+    return infer_prompt(record.name)
+
+
 def load_prompt_map(path: Path | None) -> dict[str, str]:
     if path is None:
         return {}
@@ -50,14 +88,17 @@ def main() -> int:
     )
     parser.add_argument(
         "--record-glob",
-        default="record_*",
+        default="**",
         help="Glob used to select record directories under --dataset-root.",
     )
     parser.add_argument(
         "--json",
-        default="sample_20_noaxis_8.json",
-        help="Metadata JSON name expected inside each record directory.",
+        help="Explicit metadata filename; overrides --touches.",
     )
+    parser.add_argument("--touches", default="20", help="Number of touches (default: 20), or all for meta JSON.")
+    parser.add_argument("--config-stage1", default="configs/touchanything/stage1_real.yaml")
+    parser.add_argument("--config-stage2", default="configs/touchanything/stage2_real.yaml")
+    parser.add_argument("--smoke-test", action="store_true", help="Small 3-step training and mesh export test.")
     parser.add_argument(
         "--output-root",
         default=str(PROJECT_ROOT / "outputs" / "touchanything_dataset"),
@@ -105,6 +146,8 @@ def main() -> int:
         help="Path to reconstruct_object.sh.",
     )
     args = parser.parse_args()
+    if args.touches != "all" and (not args.touches.isdigit() or int(args.touches) < 1):
+        parser.error("--touches must be a positive integer or all")
 
     dataset_root = Path(args.dataset_root).expanduser().resolve()
     script = Path(args.script).expanduser().resolve()
@@ -115,17 +158,19 @@ def main() -> int:
     if not script.is_file():
         raise SystemExit(f"Reconstruction script does not exist: {script}")
 
-    records = sorted(p for p in dataset_root.glob(args.record_glob) if p.is_dir())
-    records = [p for p in records if (p / args.json).is_file()]
+    directories = sorted({dataset_root, *(p for p in dataset_root.glob(args.record_glob) if p.is_dir())})
+    records = [(p, metadata) for p in directories if (metadata := select_metadata(p, args.touches, args.json)) is not None]
     if args.max_records is not None:
         records = records[: args.max_records]
     if not records:
         raise SystemExit("No records with the requested metadata JSON were found.")
 
     failures = 0
-    for record in records:
-        prompt = prompt_map.get(record.name) or args.default_prompt or infer_prompt(record.name)
-        name = record.name.replace("/", "_")
+    for record, metadata in records:
+        relative = record.relative_to(dataset_root).as_posix()
+        prompt = prompt_map.get(relative) or prompt_map.get(record.name) or args.default_prompt or record_prompt(record, dataset_root)
+        name = (relative if relative != "." else record.name).replace("/", "_")
+        print(f"Record: {record}; JSON: {metadata.name}; prompt: {prompt}", flush=True)
         cmd = [
             "bash",
             str(script),
@@ -134,7 +179,11 @@ def main() -> int:
             "--data-root",
             str(record),
             "--json",
-            args.json,
+            metadata.name,
+            "--config-stage1",
+            args.config_stage1,
+            "--config-stage2",
+            args.config_stage2,
             "--prompt",
             prompt,
             "--output-dir",
@@ -144,8 +193,12 @@ def main() -> int:
         ]
         if args.max_steps is not None:
             cmd += ["--max-steps", str(args.max_steps)]
+        if args.smoke_test:
+            cmd.append("--smoke-test")
         if args.wandb:
             cmd.append("--wandb")
+        else:
+            cmd.append("--no-wandb")
         if args.dry_run:
             cmd.append("--dry-run")
 

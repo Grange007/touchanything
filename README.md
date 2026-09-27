@@ -35,11 +35,12 @@ runner, default configs, and a 20-touch camera example under
 We plan to release the following components of TouchAnything:
 
 - [x] Reconstruction code
-- [ ] Real-world tactile dataset
+- [x] Real-world tactile dataset
+- [x] Simulation tactile dataset
 - [ ] Simulation data processing pipeline
 
-The reconstruction code is currently available. The real-world dataset and
-simulation data processing pipeline will be released in future updates.
+The reconstruction code and both datasets are available. The simulation data
+processing pipeline will be released in a future update.
 
 ## Installation
 
@@ -153,43 +154,152 @@ outputs/touchanything/<experiment-name>/
 
 ## Dataset Reconstruction
 
-Place each object record in a separate directory:
+Published data: [Real-world dataset](https://huggingface.co/Grange007/touchanything_real_world_dataset)
+and [Simulation dataset](https://huggingface.co/Grange007/touchanything_simulation_dataset).
+Download and extract the archives, preserving the original directory structure.
+These uploads currently use Hugging Face model repositories, rather than the
+`datasets` library format.
 
-```text
-my_dataset/
-  record_object_a/
-    sample_20_noaxis_8.json
-    000000_rgb.png
-    000000_depth.npy
-    ...
-  record_object_b/
-    sample_20_noaxis_8.json
-    ...
-```
+### Download and test one object from each dataset
 
-Run all records matching `record_*`:
+From the repository root, with the environment activated and model weights installed:
 
 ```bash
-python scripts/reconstruct_dataset.py \
-  --dataset-root my_dataset \
-  --json sample_20_noaxis_8.json \
-  --output-root outputs/touchanything_dataset
+python tools/download_dataset_example.py real
+python tools/download_dataset_example.py simulation
+
+bash scripts/train_real_dataset.sh examples/data/hf_samples/real \
+  --max-records 1 --smoke-test
+bash scripts/train_simulation_dataset.sh examples/data/hf_samples/simulation \
+  --max-records 1 --smoke-test
 ```
 
-Use `--prompt-map prompts.json` to provide prompts for individual records:
+The downloader streams the first object from each archive without saving the
+entire archive (the simulation example comes from `camera.tar.gz`). It preserves
+the category directory used to infer simulation prompts. The current remote
+archive paths contain a space; the downloader handles their URL encoding.
+
+Both examples have been tested with 20 touches on an RTX 4090: the real-world
+`record_screwdriver_new_20250909_115114/scale_noaxis_8` and simulation
+`camera/a600991b042b2d5492348cc032adf089`.
+The smoke test runs **three optimization steps per stage**, including diffusion
+guidance, and exports both meshes using small grids and batches. It checks the
+pipeline, not reconstruction quality or convergence.
+
+### Full reconstruction
+
+Remove `--smoke-test` to use the normal training settings:
+
+```bash
+bash scripts/train_real_dataset.sh examples/data/hf_samples/real --max-records 1
+bash scripts/train_simulation_dataset.sh examples/data/hf_samples/simulation --max-records 1
+```
+
+For the complete extracted datasets, use their root directories and omit
+`--max-records` to process all matching objects:
+
+```bash
+bash scripts/train_real_dataset.sh /path/to/touchanything_real_world_dataset
+bash scripts/train_simulation_dataset.sh /path/to/simulation_dataset
+```
+
+The real-world wrapper selects `**/scale_noaxis_8` to avoid reconstructing the
+same object from multiple coordinate variants. The simulation wrapper searches
+recursively, including category directories such as `camera/<object-id>`.
+Both use the two-stage reconstruction configs and disable W&B by default;
+add `--wandb` to enable it. Outputs go to `outputs/real_world_dataset/` and
+`outputs/simulation_dataset/`. For lower-memory full training, append
+`--config-stage2 configs/touchanything/stage2_real_less_mem.yaml`.
+
+### Touch counts and prompts
+
+The default is **20 touches**, matching the main experiments. JSON selection
+checks the actual number of entries in `frames`, so both
+`sample_20_noaxis_8.json` and `<object-id>_20.json` are supported. When several
+JSONs match, `sample_20_noaxis_8.json` is preferred, then `sample_20.json`;
+otherwise an ambiguity error asks you to choose explicitly.
+
+```bash
+bash scripts/train_real_dataset.sh /path/to/dataset --touches 40
+bash scripts/train_simulation_dataset.sh /path/to/dataset --touches 10
+# Use all touches from a meta*.json file, where available:
+bash scripts/train_real_dataset.sh /path/to/dataset --touches all
+# Explicit filenames override --touches:
+bash scripts/train_real_dataset.sh /path/to/dataset --json sample_20_noaxis_8.json
+```
+
+`--touches all` requires a `meta*.json`; it does not silently select the largest
+numeric subset. For simulation records with only numeric subsets, choose the
+available count, for example `--touches 100`.
+
+Prompts are inferred from real-world `record_*` names or simulation category
+directories. Override them with `--default-prompt "a camera"`, or use
+`--prompt-map prompts.json` with dataset-relative record paths:
 
 ```json
 {
-  "record_object_a": "a camera",
-  "record_object_b": "a bottle"
+  "record_screwdriver_new_20250909_115114/scale_noaxis_8": "a screwdriver",
+  "camera/a600991b042b2d5492348cc032adf089": "a camera"
 }
 ```
+
+Add `--dry-run` to inspect selected records, JSONs, prompts, and commands
+without starting training. Missing requested subsets are skipped; if no
+matching records exist, the runner exits with an error.
+
+## Single-Object EMD Evaluation
+
+Evaluate a reconstructed mesh against its ground-truth mesh using the supplied
+simulation evaluation protocol:
+
+```bash
+python tools/evaluate_object_emd.py \
+  --gt-mesh /path/to/ground_truth.obj \
+  --pred-mesh /path/to/stage2-export-mesh/save/it3000-export/model.obj \
+  --output outputs/evaluation/object_emd.json
+```
+
+The defaults reproduce the original preprocessing: scale the prediction by
+`5/9`, keep its largest connected component by vertex count, remove duplicate
+and degenerate faces, attempt hole filling and normal repair, then translate
+the prediction by the GT bounding-box center. The GT is not normalized.
+Use the same prediction export coordinate convention as the original experiment;
+do not apply this transform a second time to an already aligned export.
+
+### Simulation scale convention
+
+Simulation preprocessing centers the input mesh at its bounding-box center and
+scales it by `0.2`. TouchAnything export then multiplies depth, camera positions,
+and scene bounds by `9`, giving an overall geometry scale of `0.2 * 9 = 1.8`
+relative to the input mesh. The evaluation factor `5/9 = 1/1.8` reverses this
+scale; translating by the original GT bounding-box center restores its position.
+This default applies when the GT is the **original input mesh**.
+
+Both surfaces are sampled independently with 4096 points and seed 0. EMD is
+the mean **Euclidean (not squared)** distance under optimal one-to-one matching
+using SciPy, in the GT coordinate units; lower is better. The dense distance
+matrix alone takes about 128 MiB at 4096 points, and larger sample counts can
+be expensive. Change the count with `--num-samples` and optionally save the
+points and matching indices with `--save-matching outputs/evaluation/matching.npz`.
+
+For meshes already in the same coordinate system, disable the legacy transforms:
+
+```bash
+python tools/evaluate_object_emd.py \
+  --gt-mesh /path/to/ground_truth.obj --pred-mesh /path/to/prediction.obj \
+  --pred-scale 1 --no-gt-center-translation --no-cleanup
+```
+
+Independent surface sampling means even identical meshes can have nonzero EMD.
+This script evaluates one object only; benchmark traversal and aggregation are
+left to users. It does not require PyTorch3D, Open3D, or a rendering backend.
 
 ## Data Format
 
 Each record uses an `OPENCV` camera model and contains a `frames` list. Every
 frame references its RGB image, depth array, normal array, foreground mask,
-camera intrinsics, and camera-to-world transform. See
+4x4 camera intrinsics (with the usual 3x3 matrix in the upper-left block), and
+a 4x4 camera-to-world transform. See
 [docs/data_format.md](docs/data_format.md) and the bundled camera example for
 the complete layout.
 

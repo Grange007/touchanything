@@ -19,6 +19,7 @@ MAX_STEPS=""
 CONVERT_MESH_SCALE=""
 ELEVATION_RANGE=""
 DRY_RUN=false
+SMOKE_TEST=false
 
 if [[ -n "${PYTHONWARNINGS:-}" ]]; then
     export PYTHONWARNINGS="${PYTHONWARNINGS},ignore::FutureWarning,ignore:pkg_resources is deprecated as an API:UserWarning"
@@ -42,11 +43,13 @@ Options:
   -o, --output-dir DIR         Output root directory.
   -r, --resolution NUM         Mesh export resolution.
   -w, --wandb                  Enable Weights & Biases logging.
+      --no-wandb               Disable Weights & Biases logging.
       --data-root-stage2 DIR   Optional stage-2 record directory.
       --json-stage2 FILE       Optional stage-2 metadata JSON.
       --convert-mesh-scale VAL Override stage-2 mesh conversion scale.
       --elevation-range RANGE  Override random camera elevation range, e.g. "[-15,30]".
       --max-steps NUM          Override trainer.max_steps for both stages.
+      --smoke-test             Run 3 steps per stage with small grids and batches.
       --dry-run                Print commands without running them.
   -h, --help                   Show this help message.
 
@@ -78,6 +81,8 @@ while [[ $# -gt 0 ]]; do
             MESH_RESOLUTION="$2"; shift 2 ;;
         -w|--wandb)
             USE_WANDB=true; shift ;;
+        --no-wandb)
+            USE_WANDB=false; shift ;;
         --data-root-stage2)
             DATA_ROOT_STAGE2="$2"; shift 2 ;;
         --json-stage2)
@@ -88,6 +93,8 @@ while [[ $# -gt 0 ]]; do
             ELEVATION_RANGE="$2"; shift 2 ;;
         --max-steps)
             MAX_STEPS="$2"; shift 2 ;;
+        --smoke-test)
+            SMOKE_TEST=true; MAX_STEPS=3; MESH_RESOLUTION=32; shift ;;
         --dry-run)
             DRY_RUN=true; shift ;;
         -h|--help)
@@ -198,6 +205,11 @@ STAGE1_ARGS=(
 if [[ -n "$MAX_STEPS" ]]; then
     STAGE1_ARGS+=("trainer.max_steps=$MAX_STEPS")
 fi
+if [[ "$SMOKE_TEST" == true ]]; then
+    STAGE1_ARGS+=(trainer.num_sanity_val_steps=0 trainer.limit_val_batches=0 trainer.limit_test_batches=1
+        system.freq.ref_only_steps=0 system.freq.guidance_eval=0
+        data.train_num_rays=1024 data.random_camera.batch_size=1)
+fi
 if [[ -n "$ELEVATION_RANGE" ]]; then
     STAGE1_ARGS+=("data.random_camera.elevation_range=$ELEVATION_RANGE")
 fi
@@ -240,6 +252,13 @@ STAGE2_ARGS=(
 
 if [[ -n "$MAX_STEPS" ]]; then
     STAGE2_ARGS+=("trainer.max_steps=$MAX_STEPS")
+fi
+if [[ "$SMOKE_TEST" == true ]]; then
+    STAGE2_ARGS+=(trainer.num_sanity_val_steps=0 trainer.limit_val_batches=0 trainer.limit_test_batches=1
+        system.freq.ref_only_steps=0 system.freq.guidance_eval=0
+        system.geometry.isosurface_resolution=32 data.stage2_batch_size=1
+        data.random_camera.batch_size=1 data.random_camera.height=64
+        data.random_camera.width=64)
 fi
 if [[ -n "$CONVERT_MESH_SCALE" ]]; then
     STAGE2_ARGS+=("system.geometry.convert_mesh_scale=$CONVERT_MESH_SCALE")
